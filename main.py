@@ -656,29 +656,6 @@ async def scheduler_task(app):
 
         await asyncio.sleep(3600)
 
-
-# ======================== KEEP-ALIVE WEB SERVER ========================
-from aiohttp import web
-
-async def handle_health(request):
-    return web.Response(text="OK")
-
-async def start_web_server():
-    app = web.Application()
-    app.add_routes([web.get('/health', handle_health)])
-
-    runner = web.AppRunner(app)
-    await runner.setup()
-
-    # Railway требует PORT из переменной среды
-    import os
-    port = int(os.environ.get("PORT", 8080))
-
-    site = web.TCPSite(runner, '0.0.0.0', port)
-    await site.start()
-    print(f"🚀 Keep-alive server запущен на порту {port}")
-
-
 # ======================== MAIN ========================
 
 async def run_bot():
@@ -703,7 +680,8 @@ async def run_bot():
         webhook_url=f"{WEBHOOK_URL}/{BOT_TOKEN}"
     )
 
-
 if __name__ == "__main__":
-    asyncio.run(run_bot())
+    loop = asyncio.get_event_loop()
+    loop.run_until_complete(run_bot())
+
 
