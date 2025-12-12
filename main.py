@@ -26,9 +26,8 @@ import os
 
 # ======================== НАСТРОЙКИ ========================
 
-# ======================== НАСТРОЙКИ ========================
-
 BOT_TOKEN = os.getenv("BOT_TOKEN")
+WEBHOOK_URL = os.getenv("WEBHOOK_URL")
 if not BOT_TOKEN:
     raise ValueError("❗ BOT_TOKEN отсутствует! Добавьте его в переменные окружения.")
 
@@ -682,7 +681,7 @@ async def start_web_server():
 
 # ======================== MAIN ========================
 
-def main():
+async def run_bot():
     app = ApplicationBuilder().token(BOT_TOKEN).concurrent_updates(True).build()
 
     app.add_handler(CommandHandler("start", start))
@@ -690,13 +689,21 @@ def main():
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, on_text))
     app.add_handler(CallbackQueryHandler(callback))
 
-    loop = asyncio.get_event_loop()
+    # Сcheduler запускается в фоне
+    asyncio.create_task(scheduler_task(app))
 
-    loop.create_task(scheduler_task(app))
+    # Keep-alive server
+    asyncio.create_task(start_web_server())
 
-    loop.create_task(start_web_server())
+    # Запускаем webhook — ЕДИНСТВЕННЫЙ способ работы на Railway/Fly.io
+    await app.run_webhook(
+        listen="0.0.0.0",
+        port=int(os.getenv("PORT", 8000)),
+        url_path=BOT_TOKEN,
+        webhook_url=f"{WEBHOOK_URL}/{BOT_TOKEN}"
+    )
 
-    app.run_polling(drop_pending_updates=True)
 
 if __name__ == "__main__":
-    main()
+    asyncio.run(run_bot())
+
